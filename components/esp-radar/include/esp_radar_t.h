@@ -30,26 +30,27 @@ extern "C"
 #define WIFI_CSI_SEND_NULL_DATA_ENABLE    1
 #endif
 
-#ifdef CONFIG_SPIRAM_SUPPORT
+#ifdef CONFIG_SPIRAM
 #define MALLOC_CAP_INDICATE MALLOC_CAP_SPIRAM
 #else
 #define MALLOC_CAP_INDICATE MALLOC_CAP_DEFAULT
 #endif
 
-#define RADAR_MALLOC_RETRY(size) ({                                                                                               \
-    void *ptr = NULL;                                                                                                         \
-    while (size > 0 && !(ptr = heap_caps_malloc(size, MALLOC_CAP_INDICATE))) {                                                \
-        ESP_LOGW("esp_radar", "<ESP_ERR_NO_MEM> Realloc size: %d, ptr: %p, heap free: %d", (int)size, ptr, esp_get_free_heap_size()); \
-        vTaskDelay(pdMS_TO_TICKS(100));                                                                                       \
-    }                                                                                                                         \
-    ptr;                                                                                                                      \
+#define RADAR_MALLOC_RETRY(size) ({                                                                                                        \
+    void *ptr = NULL;                                                                                                                  \
+    while (size > 0 && !(ptr = heap_caps_malloc(size, MALLOC_CAP_INDICATE))) {                                                         \
+        ESP_LOGW("esp_radar", "<ESP_ERR_NO_MEM> %s:%d Realloc size: %d, ptr: %p, heap free: %d", __func__, __LINE__, (int)size, ptr, esp_get_free_heap_size()); \
+        vTaskDelay(pdMS_TO_TICKS(100));                                                                                                \
+    }                                                                                                                                  \
+    ptr;                                                                                                                               \
 })
 
 #define RADAR_FREE(ptr) do { \
-    if (ptr) {           \
-        free(ptr);       \
-        ptr = NULL;      \
-    }                    \
+    if (ptr) { \
+        ESP_LOGI("esp_radar", "free ptr=%p @%s:%d, heap free: %d", (void *)(ptr), __func__, __LINE__, esp_get_free_heap_size()); \
+        free(ptr); \
+        ptr = NULL; \
+    } \
 } while(0)
 
 typedef enum {

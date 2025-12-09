@@ -38,7 +38,7 @@
 #endif
 
 #define CONFIG_ESP_NOW_RATE             WIFI_PHY_RATE_MCS0_LGI
-#define CONFIG_SEND_FREQUENCY               50
+#define CONFIG_SEND_FREQUENCY               10
 
 static const uint8_t CONFIG_CSI_SEND_MAC[] = {0x2a, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const char *TAG = "csi_send";

@@ -290,6 +290,7 @@ static esp_err_t esp_radar_rebuild_csi_data(const wifi_csi_info_t *info, const e
         }
         const csi_sub_carrier_table_t *sub_carrier_index =  sub_carrier_table + i;
         *out_filtered_info = RADAR_MALLOC_RETRY(sizeof(wifi_csi_filtered_info_t) + sub_carrier_index->valid_bytes);
+        ESP_LOGI(TAG_FILTER_CSI, "malloc filtered_info: %p, size: %d", *out_filtered_info, sub_carrier_index->valid_bytes);
         memset(*out_filtered_info, 0, sizeof(wifi_csi_filtered_info_t) + sub_carrier_index->valid_bytes);
 
         // 使用局部指针变量提高可读性
@@ -360,7 +361,7 @@ static void esp_radar_csi_rx_cb(void *ctx, wifi_csi_info_t *info)
 
     esp_radar_rx_ctrl_info_t rx_ctrl_info;
     esp_radar_extract_rx_ctrl_info(&info->rx_ctrl, &rx_ctrl_info);
-    ESP_LOGD(TAG_CB, "timestamp: %ld, mac: " MACSTR", channel: %d, secondary_channel: %d, rssi: %d, rx_format: %d, cwb: %d, rate: %d, mcs: %d, stbc: %d, noise_floor: %d, len: %d, agc_gain: %d, fft_gain: %d",
+    ESP_LOGI(TAG_CB, "timestamp: %ld, mac: " MACSTR", channel: %d, secondary_channel: %d, rssi: %d, rx_format: %d, cwb: %d, rate: %d, mcs: %d, stbc: %d, noise_floor: %d, len: %d, agc_gain: %d, fft_gain: %d",
              rx_ctrl_info.timestamp, MAC2STR(info->mac), rx_ctrl_info.channel, rx_ctrl_info.secondary_channel, rx_ctrl_info.rssi, rx_ctrl_info.rx_format, rx_ctrl_info.cwb, rx_ctrl_info.rate, rx_ctrl_info.mcs,
              rx_ctrl_info.stbc, rx_ctrl_info.noise_floor, info->len, rx_ctrl_info.agc_gain, rx_ctrl_info.fft_gain);
 
@@ -384,11 +385,12 @@ static void esp_radar_csi_rx_cb(void *ctx, wifi_csi_info_t *info)
     if (s_ctx.csi_config.csi_filtered_cb) {
         s_ctx.csi_config.csi_filtered_cb(s_ctx.csi_config.csi_filtered_cb_ctx, filtered_info);
     }
+
     if (!s_ctx.run_flag) {
         static bool run_flag_warned = false;
         if (!run_flag_warned) {
             ESP_LOGW(TAG_CB, "esp_radar not running, CSI data dropped");
-            run_flag_warned = true;
+            // run_flag_warned = true;
         }
         RADAR_FREE(filtered_info);
     } else if (!s_ctx.csi_info_queue || xQueueSend(s_ctx.csi_info_queue, &filtered_info, 0) == pdFALSE) {
@@ -599,13 +601,14 @@ static void csi_preprocessing_task(void *arg)
         void *ltf_data = NULL;
         uint16_t ltf_len = 0;
         uint16_t subcarrier_len = 0;
+        ESP_LOGE(TAG, "ltf_data: %p, s_ctx.subcarrier_len %d, subcarrier_len: %d", ltf_data, s_ctx.subcarrier_len, subcarrier_len);
         if (esp_radar_get_ltf_data(filtered_info, &ltf_data, &ltf_len) != ESP_OK) {
             goto FREE_MEM;
         }
 
         uint8_t component_bytes = (filtered_info->data_type == WIFI_CSI_DATA_TYPE_INT16) ? sizeof(int16_t) : sizeof(int8_t);
         subcarrier_len = (uint16_t)((ltf_len / (2U * component_bytes)) / s_ctx.radar_config.sub_carrier_step_size);
-
+        ESP_LOGE(TAG, "ltf_data: %p, s_ctx.subcarrier_len %d, subcarrier_len: %d, filtered_info: %p", ltf_data, s_ctx.subcarrier_len, subcarrier_len, filtered_info);
         if (s_ctx.subcarrier_len == 0) {
             s_ctx.subcarrier_len = subcarrier_len;
             csi_prepare_amplitude(subcarrier_len);

@@ -54,6 +54,10 @@ fft_gain_data = np.zeros([CSI_DATA_INDEX], dtype=np.float64)
 fft_gains = []
 agc_gains = []
 
+# RAW_DATA 独立数据数组
+RAW_DATA_COLUMNS = 612  # RAW_DATA 最大长度
+raw_data_complex = np.zeros([CSI_DATA_INDEX, RAW_DATA_COLUMNS], dtype=np.complex64)
+
 class csi_data_graphical_window(QWidget):
     def __init__(self):
         super().__init__()
@@ -70,7 +74,12 @@ class csi_data_graphical_window(QWidget):
 
         self.csi_amplitude_array = np.abs(csi_data_complex)
         self.csi_phase_array = np.angle(csi_data_complex)
-        self.curve = self.plotWidget_ted.plot([], name='CSI Row Data', pen='r')
+        self.curve = self.plotWidget_ted.plot([], name='CSI Phase', pen='r')
+
+        # RAW_DATA 相位曲线（蓝色）
+        self.raw_amplitude_array = np.abs(raw_data_complex)
+        self.raw_phase_array = np.angle(raw_data_complex)
+        self.curve_raw = self.plotWidget_ted.plot([], name='RAW Phase', pen='b')
 
         self.plotWidget_multi_data = PlotWidget(self)
         self.plotWidget_multi_data.setGeometry(QtCore.QRect(0, 300, 1280, 300))
@@ -146,29 +155,38 @@ class csi_data_graphical_window(QWidget):
         i = np.real(csi_data_complex[-1, :])
         q = np.imag(csi_data_complex[-1, :])
 
-        points = []
-        for idx in range(self.deta_len):
-            if idx < len(self.iq_colors):
-                color = self.iq_colors[idx]
-            else:
-                color = (200, 200, 200)
-            points.append({'pos': (i[idx], q[idx]), 'brush': pg.mkBrush(color)})
+        # points = []
+        # for idx in range(self.deta_len):
+        #     if idx < len(self.iq_colors):
+        #         color = self.iq_colors[idx]
+        #     else:
+        #         color = (200, 200, 200)
+        #     points.append({'pos': (i[idx], q[idx]), 'brush': pg.mkBrush(color)})
 
-        self.iq_scatter.setData(points)
+        # self.iq_scatter.setData(points)
 
-
+        # CSI_DATA 相位更新
         self.csi_amplitude_array = np.abs(csi_data_complex)
         self.csi_phase_array = np.angle(csi_data_complex)
         self.csi_row_data = self.csi_phase_array[-1, :]
 
+        self.csi_row_data = np.unwrap(self.csi_row_data)
         self.curve.setData(self.csi_row_data)
 
-        self.curve_list[CSI_DATA_COLUMNS].setData(agc_gain_data)
-        self.curve_list[CSI_DATA_COLUMNS+1].setData(fft_gain_data)
+        # RAW_DATA 相位更新
+        self.raw_amplitude_array = np.abs(raw_data_complex)
+        self.raw_phase_array = np.angle(raw_data_complex)
+        self.raw_row_data = self.raw_phase_array[-1, :]
+
+        self.raw_row_data = np.unwrap(self.raw_row_data)
+        self.curve_raw.setData(self.raw_row_data)
+
+        # self.curve_list[CSI_DATA_COLUMNS].setData(agc_gain_data)
+        # self.curve_list[CSI_DATA_COLUMNS+1].setData(fft_gain_data)
 
         for i in range(CSI_DATA_COLUMNS):
             self.curve_list[i].setData(self.csi_amplitude_array[:, i])
-            self.curve_phase_list[i].setData(self.csi_phase_array[:, i])
+            # self.curve_phase_list[i].setData(self.csi_phase_array[:, i])
 
 def generate_subcarrier_colors(red_range, green_range, yellow_range, total_num,interval=1):
     colors = []
@@ -191,7 +209,8 @@ def generate_subcarrier_colors(red_range, green_range, yellow_range, total_num,i
 def csi_data_read_parse(port: str, csv_writer, log_file_fd,callback=None):
     global fft_gains, agc_gains
     set = serial.Serial(port=port, baudrate=921600,bytesize=8, parity='N', stopbits=1)
-    count =0
+    csi_count = 0  # CSI_DATA 计数器
+    raw_count = 0  # RAW_DATA 计数器
     if set.isOpen():
         print('open success')
     else:
@@ -203,12 +222,52 @@ def csi_data_read_parse(port: str, csv_writer, log_file_fd,callback=None):
             break
         strings = strings.lstrip('b\'').rstrip('\\r\\n\'')
         index = strings.find('CSI_DATA')
+        raw_index = strings.find('RAW_DATA')
 
-        if index == -1:
+        if index == -1 and raw_index == -1:
             log_file_fd.write(strings + '\n')
             log_file_fd.flush()
             continue
 
+        # RAW_DATA 单独处理
+        if raw_index != -1:
+            csv_reader = csv.reader(StringIO(strings))
+            csi_data = next(csv_reader)
+            csi_data_len = int(csi_data[-3])
+
+            try:
+                csi_raw_data = json.loads(csi_data[-1])
+            except json.JSONDecodeError:
+                print('RAW_DATA is incomplete')
+                log_file_fd.write('RAW_DATA is incomplete\n')
+                log_file_fd.write(strings + '\n')
+                log_file_fd.flush()
+                continue
+
+            if csi_data_len != len(csi_raw_data):
+                print('RAW_DATA csi_data_len is not equal',csi_data_len,len(csi_raw_data))
+                log_file_fd.write('RAW_DATA csi_data_len is not equal\n')
+                log_file_fd.write(strings + '\n')
+                log_file_fd.flush()
+                continue
+
+            # RAW_DATA 使用独立的数据数组
+            raw_data_complex[:-1] = raw_data_complex[1:]
+            # 清空当前行
+            raw_data_complex[-1, :] = 0
+
+            if raw_count == 0:
+                raw_count = 1
+                print('RAW_DATA detected, length:', csi_data_len)
+                # RAW_DATA 不需要初始化颜色，只是接收数据显示相位
+
+            # RAW_DATA 转换为复数存入独立数组
+            for i in range(csi_data_len // 2):
+                raw_data_complex[-1][i] = complex(csi_raw_data[i * 2 + 1],
+                                                csi_raw_data[i * 2])
+            continue
+
+        # CSI_DATA 处理
         csv_reader = csv.reader(StringIO(strings))
         csi_data = next(csv_reader)
         csi_data_len = int (csi_data[-3])
@@ -252,9 +311,9 @@ def csi_data_read_parse(port: str, csv_writer, log_file_fd,callback=None):
         agc_gain_data[-1] = agc_gain
         fft_gain_data[-1] = fft_gain
 
-        if count ==0:
-            count = 1
-            print('none',csi_data_len)
+        if csi_count == 0:
+            csi_count = 1
+            print('CSI_DATA detected, length:',csi_data_len)
             if csi_data_len == 106:
                 colors = generate_subcarrier_colors((0,25), (27,53), None, len(csi_raw_data))
             elif  csi_data_len == 114:
@@ -277,7 +336,7 @@ def csi_data_read_parse(port: str, csv_writer, log_file_fd,callback=None):
                 colors = generate_subcarrier_colors((0,63), (64,127), (128,192), len(csi_raw_data))
             else:
                 print('Please add more color schemes.')
-                count =0
+                csi_count = 0
                 continue
             callback(colors)
 
