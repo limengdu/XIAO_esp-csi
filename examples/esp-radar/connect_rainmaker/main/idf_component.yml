@@ -2,9 +2,7 @@
 dependencies:
   idf: '>=4.4.1'
 
-  esp-radar:
-    version: 0.*
-    override_path: ../../../../components/esp-radar
+  esp-radar:">=0.3.0"
 
   espressif/rmaker_common: 1.4.*
   espressif/json_generator: ^1
