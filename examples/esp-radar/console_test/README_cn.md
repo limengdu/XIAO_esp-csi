@@ -1,3 +1,6 @@
+| Supported Targets | ESP32 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-S2 | ESP32-S3 |
+| ----------------- | ----- | -------- | -------- | -------- | --------- | -------- | -------- |
+
 # esp-csi console_test [[English]](./README.md)
 ----------
 ## 1 简介
@@ -9,7 +12,7 @@ console_test 是一款 Wi-Fi CSI 的测试平台，它包含了对 Wi-Fi CSI 的
 ## 2 环境准备
 ### 2.1 设备
 ![设备](./docs/_static/2.1_equipment.png)
-本例提供了 `esp32-s3 开发板` 和 `路由器` 两种设备模式作为 Wi-Fi CSI 发送设备。 其中使用 `esp32-s3 开发板` 作为发送设备，对发送频率、射频大小、信道的调整效果更好。两种模式下都用 esp32-s3 作为 Wi-Fi CSI 的接收设备。
+本例提供了 `ESP32 DevKitC 开发板` 和 `路由器` 两种设备模式作为 Wi-Fi CSI 发送设备。 其中使用 `ESP32 DevKitC 开发板` 作为发送设备，对发送频率、射频大小、信道的调整效果更好。两种模式下都用 `ESP32 DevKitC 开发板` 作为 Wi-Fi CSI 的接收设备。
 
 ### 2.2 编译环境
 使用的 esp-idf 版本为 [ESP-IDF Release v5.0.2](https://github.com/espressif/esp-idf/releases/tag/v5.0.2)
@@ -24,7 +27,7 @@ git submodule update --init --recursive
 
 ## 3 程序启动
 ### 3.1 发送 Wi-Fi CSI
-+ **esp32-s3 发送 CSI**：烧录工程 `csi_send` 到 esp32-s3 中
++ ** `ESP32 DevKitC 开发板`  发送 CSI**：烧录工程 `csi_send` 到  `ESP32 DevKitC 开发板`  中
     ```bash
     cd esp-csi/examples/get-started/csi_send
     idf.py set-target esp32s3
@@ -33,7 +36,7 @@ git submodule update --init --recursive
 + **路由器 发送 CSI**：此时路由器不连接其他智能设备，避免网络拥塞影响测试效果
 
 ### 3.2 接收 Wi-Fi CSI
-+ 烧录 `console_test` 到另一块 esp32-s3 开发板中
++ 烧录 `console_test` 到另一块  `ESP32 DevKitC 开发板`  开发板中
     ```bash
     cd esp-csi/examples/console_test
     idf.py set-target esp32s3
@@ -47,7 +50,7 @@ git submodule update --init --recursive
     # Install python related dependencies
     pip install -r requirements.txt
     # Graphical display
-    python esp_csi_tool.py -p /dev/ttyUSB1 -t LLTF
+    python esp_csi_tool.py -p /dev/ttyUSB1
     ```
 + 运行成功后，打开如下 CSI 数据实时可视化界面，界面左侧为数据显示界面，右侧为数据模型界面：
 ![csi_tool界面](./docs/_static/3.3_csi_tool.png)

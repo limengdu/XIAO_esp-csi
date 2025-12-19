@@ -1,3 +1,6 @@
+| Supported Targets | ESP32 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-S2 | ESP32-S3 |
+| ----------------- | ----- | -------- | -------- | -------- | --------- | -------- | -------- |
+
 # esp-csi console_test [[中文]](./README_cn.md)
 ----------
 ## 1 Introduction
@@ -8,7 +11,7 @@ This example provides a test platform for Wi-Fi CSI, which includes functions su
 ## 2 Equipment preparation
 ### 2.1 Equipment
 ![equipment](./docs/_static/2.1_equipment.png)
-This example provides two working modes of `esp32-s3 development board` and `router` as Wi-Fi CSI contracting equipment. Using `esp32-s3 development board` as contracting equipment has better adjustment effect on contracting rate, RF size and channel. In both modes, `esp32-s3 development board` is used as the receiving device for Wi-Fi CSI.
+This example provides two working modes of `ESP32 DevKitC development board` and `router` as Wi-Fi CSI contracting equipment. Using `ESP32 DevKitC development board` as contracting equipment has better adjustment effect on contracting rate, RF size and channel. In both modes, `ESP32 DevKitC development board` is used as the receiving device for Wi-Fi CSI.
 
 ### 2.2 Compiler Environment
 The esp-idf version of the current project is [ESP-IDF Release v5.0.2](https://github.com/espressif/esp-idf/releases/tag/v5.0.2)
@@ -23,7 +26,7 @@ git submodule update --init --recursive
 
 ## 3 Starting program
 ### 3.1 Send Wi-Fi CSI
-+ **Use esp32-s3 to send CSI**：Burn project `csi_send` to esp32-s3 development board
++ **Use `ESP32 DevKitC` to send CSI**：Burn project `csi_send` to `ESP32 DevKitC development board`
   
     ```bash
     cd esp-csi/examples/get-started/csi_send
@@ -33,7 +36,7 @@ git submodule update --init --recursive
 + **Use router to send CSI**：The router is not connected to other intelligent devices to avoid network congestion affecting the test effect.
 
 ### 3.2 Receive Wi-Fi CSI
-+ Burn project `console_test` to another esp32-s3 development board
++ Burn project `console_test` to another `ESP32 DevKitC development board`
     ```bash
     cd esp-csi/examples/console_test
     idf.py set-target esp32s3
@@ -47,7 +50,7 @@ git submodule update --init --recursive
     # Install python related dependencies
     pip install -r requirements.txt
     # Graphical display
-    python esp_csi_tool.py -p /dev/ttyUSB1 -t LLTF
+    python esp_csi_tool.py -p /dev/ttyUSB1
     ```
 + After running successfully, the following CSI data visualization interface is opened. The left side of the interface is the data display interface `Raw data`, and the right side is the data model interface `Raw model`:![csi tool](./docs/_static/3.3_csi_tool.png)
 

@@ -58,6 +58,8 @@ build_idf_v5.5:
 
 push_master_to_github:
   stage: deploy
+  tags:
+    - deploy
   only:
     - master
     - /^release\/v/
