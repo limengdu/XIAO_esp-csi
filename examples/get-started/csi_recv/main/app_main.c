@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -24,79 +24,44 @@
 #include "esp_wifi.h"
 #include "esp_netif.h"
 #include "esp_now.h"
+#include "esp_csi_gain_ctrl.h"
 
 #define CONFIG_LESS_INTERFERENCE_CHANNEL   11
-#if CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C6
-#define CONFIG_WIFI_BAND_MODE   WIFI_BAND_MODE_2G_ONLY
+#if CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C61 || (CONFIG_IDF_TARGET_ESP32C6 && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0))
+#define CONFIG_WIFI_BAND_MODE               WIFI_BAND_MODE_2G_ONLY
 #define CONFIG_WIFI_2G_BANDWIDTHS           WIFI_BW_HT40
 #define CONFIG_WIFI_5G_BANDWIDTHS           WIFI_BW_HT40
 #define CONFIG_WIFI_2G_PROTOCOL             WIFI_PROTOCOL_11N
 #define CONFIG_WIFI_5G_PROTOCOL             WIFI_PROTOCOL_11N
-#define CONFIG_ESP_NOW_PHYMODE           WIFI_PHY_MODE_HT40
 #else
 #define CONFIG_WIFI_BANDWIDTH           WIFI_BW_HT40
 #endif
+
+#define CONFIG_ESP_NOW_PHYMODE           WIFI_PHY_MODE_HT40
 #define CONFIG_ESP_NOW_RATE             WIFI_PHY_RATE_MCS0_LGI
-#define CONFIG_FORCE_GAIN                   1
-#if CONFIG_IDF_TARGET_ESP32C5
+#define CONFIG_FORCE_GAIN                   0
+
+#if CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C61
 #define CSI_FORCE_LLTF                      0
 #endif
-#if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C6
+
+#if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32C61
 #define CONFIG_GAIN_CONTROL                 1
+#endif
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#define ESP_IF_WIFI_STA ESP_MAC_WIFI_STA
 #endif
 
 static const uint8_t CONFIG_CSI_SEND_MAC[] = {0x1a, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const char *TAG = "csi_recv";
-typedef struct {
-    unsigned : 32; /**< reserved */
-    unsigned : 32; /**< reserved */
-    unsigned : 32; /**< reserved */
-    unsigned : 32; /**< reserved */
-    unsigned : 32; /**< reserved */
-#if CONFIG_IDF_TARGET_ESP32S2
-    unsigned : 32; /**< reserved */
-#elif CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C5 ||CONFIG_IDF_TARGET_ESP32C6
-    unsigned : 16; /**< reserved */
-    unsigned fft_gain : 8;
-    unsigned agc_gain : 8;
-    unsigned : 32; /**< reserved */
-#endif
-    unsigned : 32; /**< reserved */
-#if CONFIG_IDF_TARGET_ESP32S2
-    signed : 8;  /**< reserved */
-    unsigned : 24; /**< reserved */
-#elif CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C5
-    unsigned : 32; /**< reserved */
-    unsigned : 32; /**< reserved */
-    unsigned : 32; /**< reserved */
-#endif
-    unsigned : 32; /**< reserved */
-} wifi_pkt_rx_ctrl_phy_t;
 
-#if CONFIG_FORCE_GAIN
-/**
- * @brief Enable/disable automatic fft gain control and set its value
- * @param[in] force_en true to disable automatic fft gain control
- * @param[in] force_value forced fft gain value
- */
-extern void phy_fft_scale_force(bool force_en, uint8_t force_value);
-
-/**
- * @brief Enable/disable automatic gain control and set its value
- * @param[in] force_en true to disable automatic gain control
- * @param[in] force_value forced gain value
- */
-extern void phy_force_rx_gain(int force_en, int force_value);
-#endif
 static void wifi_init()
 {
-    // esp_wifi_enable_rx_stbc(1);
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-
     ESP_ERROR_CHECK(esp_netif_init());
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
@@ -113,7 +78,7 @@ static void wifi_init()
         .ghz_5g = CONFIG_WIFI_5G_BANDWIDTHS
     };
     ESP_ERROR_CHECK(esp_wifi_set_bandwidths(ESP_IF_WIFI_STA, &bandwidth));
-#elif CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32C61
+#elif (CONFIG_IDF_TARGET_ESP32C6 && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)) || CONFIG_IDF_TARGET_ESP32C61
     ESP_ERROR_CHECK(esp_wifi_start());
     esp_wifi_set_band_mode(CONFIG_WIFI_BAND_MODE);
     wifi_protocols_t protocols = {
@@ -129,13 +94,16 @@ static void wifi_init()
     ESP_ERROR_CHECK(esp_wifi_start());
 #endif
 
-#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
-    ESP_ERROR_CHECK(esp_wifi_config_espnow_rate(ESP_IF_WIFI_STA, CONFIG_ESP_NOW_RATE));
-#endif
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
-#if CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C6
+#if CONFIG_IDF_TARGET_ESP32C5
     if ((CONFIG_WIFI_BAND_MODE == WIFI_BAND_MODE_2G_ONLY && CONFIG_WIFI_2G_BANDWIDTHS == WIFI_BW_HT20)
             || (CONFIG_WIFI_BAND_MODE == WIFI_BAND_MODE_5G_ONLY && CONFIG_WIFI_5G_BANDWIDTHS == WIFI_BW_HT20)) {
+        ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_LESS_INTERFERENCE_CHANNEL, WIFI_SECOND_CHAN_NONE));
+    } else {
+        ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_LESS_INTERFERENCE_CHANNEL, WIFI_SECOND_CHAN_BELOW));
+    }
+#elif (CONFIG_IDF_TARGET_ESP32C6 && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)) || CONFIG_IDF_TARGET_ESP32C61
+    if (CONFIG_WIFI_BAND_MODE == WIFI_BAND_MODE_2G_ONLY && CONFIG_WIFI_2G_BANDWIDTHS == WIFI_BW_HT20) {
         ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_LESS_INTERFERENCE_CHANNEL, WIFI_SECOND_CHAN_NONE));
     } else {
         ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_LESS_INTERFERENCE_CHANNEL, WIFI_SECOND_CHAN_BELOW));
@@ -150,7 +118,7 @@ static void wifi_init()
 
     ESP_ERROR_CHECK(esp_wifi_set_mac(WIFI_IF_STA, CONFIG_CSI_SEND_MAC));
 }
-#if CONFIG_IDF_TARGET_ESP32C5
+
 static void wifi_esp_now_init(esp_now_peer_info_t peer)
 {
     ESP_ERROR_CHECK(esp_now_init());
@@ -165,11 +133,9 @@ static void wifi_esp_now_init(esp_now_peer_info_t peer)
     ESP_ERROR_CHECK(esp_now_set_peer_rate_config(peer.peer_addr, &rate_config));
 
 }
-#endif
 
 static void wifi_csi_rx_cb(void *ctx, wifi_csi_info_t *info)
 {
-    // ESP_LOGI(TAG, "<%s>", __func__);
     if (!info || !info->buf) {
         ESP_LOGW(TAG, "<%s> wifi_csi_cb", esp_err_to_name(ESP_ERR_INVALID_ARG));
         return;
@@ -179,29 +145,30 @@ static void wifi_csi_rx_cb(void *ctx, wifi_csi_info_t *info)
         return;
     }
 
-    wifi_pkt_rx_ctrl_phy_t *phy_info = (wifi_pkt_rx_ctrl_phy_t *)info;
-    static int s_count = 0;
-#if CONFIG_GAIN_CONTROL
-    static uint16_t agc_gain_sum = 0;
-    static uint16_t fft_gain_sum = 0;
-    static uint8_t agc_gain_force_value = 0;
-    static uint8_t fft_gain_force_value = 0;
-    if (s_count < 100) {
-        agc_gain_sum += phy_info->agc_gain;
-        fft_gain_sum += phy_info->fft_gain;
-    } else if (s_count == 100) {
-        agc_gain_force_value = agc_gain_sum / 100;
-        fft_gain_force_value = fft_gain_sum / 100;
-#if CONFIG_FORCE_GAIN
-        phy_fft_scale_force(1, fft_gain_force_value);
-        phy_force_rx_gain(1, agc_gain_force_value);
-#endif
-        ESP_LOGI(TAG, "fft_force %d, agc_force %d", fft_gain_force_value, agc_gain_force_value);
-    }
-#endif
-    uint32_t rx_id = *(uint32_t *)(info->payload + 15);
     const wifi_pkt_rx_ctrl_t *rx_ctrl = &info->rx_ctrl;
-#if CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C6
+    static int s_count = 0;
+    float compensate_gain = 1.0f;
+    static uint8_t agc_gain = 0;
+    static int8_t fft_gain = 0;
+#if CONFIG_GAIN_CONTROL
+    static uint8_t agc_gain_baseline = 0;
+    static int8_t fft_gain_baseline = 0;
+    esp_csi_gain_ctrl_get_rx_gain(rx_ctrl, &agc_gain, &fft_gain);
+    if (s_count < 100) {
+        esp_csi_gain_ctrl_record_rx_gain(agc_gain, fft_gain);
+    } else if (s_count == 100) {
+        esp_csi_gain_ctrl_get_rx_gain_baseline(&agc_gain_baseline, &fft_gain_baseline);
+#if CONFIG_FORCE_GAIN
+        esp_csi_gain_ctrl_set_rx_force_gain(agc_gain_baseline, fft_gain_baseline);
+        ESP_LOGD(TAG, "fft_force %d, agc_force %d", fft_gain_baseline, agc_gain_baseline);
+#endif
+    }
+    esp_csi_gain_ctrl_get_gain_compensation(&compensate_gain, agc_gain, fft_gain);
+    ESP_LOGI(TAG, "compensate_gain %f, agc_gain %d, fft_gain %d", compensate_gain, agc_gain, fft_gain);
+#endif
+
+    uint32_t rx_id = *(uint32_t *)(info->payload + 15);
+#if CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32C61
     if (!s_count) {
         ESP_LOGI(TAG, "================ CSI RECV ================");
         ets_printf("type,seq,mac,rssi,rate,noise_floor,fft_gain,agc_gain,channel,local_timestamp,sig_len,rx_state,len,first_word,data\n");
@@ -209,7 +176,7 @@ static void wifi_csi_rx_cb(void *ctx, wifi_csi_info_t *info)
 
     ets_printf("CSI_DATA,%d," MACSTR ",%d,%d,%d,%d,%d,%d,%d,%d,%d",
                rx_id, MAC2STR(info->mac), rx_ctrl->rssi, rx_ctrl->rate,
-               rx_ctrl->noise_floor, phy_info->fft_gain, phy_info->agc_gain, rx_ctrl->channel,
+               rx_ctrl->noise_floor, fft_gain, agc_gain,  rx_ctrl->channel,
                rx_ctrl->timestamp, rx_ctrl->sig_len, rx_ctrl->rx_state);
 #else
     if (!s_count) {
@@ -225,15 +192,17 @@ static void wifi_csi_rx_cb(void *ctx, wifi_csi_info_t *info)
                rx_ctrl->timestamp, rx_ctrl->ant, rx_ctrl->sig_len, rx_ctrl->rx_state);
 
 #endif
-#if CONFIG_IDF_TARGET_ESP32C5 && CSI_FORCE_LLTF
-    ets_printf(",%d,%d,\"[%d", (info->len - 2) / 2, info->first_word_invalid, (int16_t)(((int16_t)info->buf[1]) << 12) >> 4 | (uint8_t)info->buf[0]);
+#if (CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C61) && CSI_FORCE_LLTF
+    int16_t csi = ((int16_t)(((((uint16_t)info->buf[1]) << 8) | info->buf[0]) << 4) >> 4);
+    ets_printf(",%d,%d,\"[%d", (info->len - 2) / 2, info->first_word_invalid, (int16_t)(compensate_gain * csi));
     for (int i = 2; i < (info->len - 2); i += 2) {
-        ets_printf(",%d", (int16_t)(((int16_t)info->buf[i + 1]) << 12) >> 4 | (uint8_t)info->buf[i]);
+        csi = ((int16_t)(((((uint16_t)info->buf[i + 1]) << 8) | info->buf[i]) << 4) >> 4);
+        ets_printf(",%d", (int16_t)(compensate_gain * csi));
     }
 #else
-    ets_printf(",%d,%d,\"[%d", info->len, info->first_word_invalid, info->buf[0]);
+    ets_printf(",%d,%d,\"[%d", info->len, info->first_word_invalid, (int16_t)(compensate_gain * info->buf[0]));
     for (int i = 1; i < info->len; i++) {
-        ets_printf(",%d", info->buf[i]);
+        ets_printf(",%d", (int16_t)(compensate_gain * info->buf[i]));
     }
 #endif
     ets_printf("]\"\n");
@@ -245,7 +214,7 @@ static void wifi_csi_init()
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
 
     /**< default config */
-#if CONFIG_IDF_TARGET_ESP32C5
+#if CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C61
     wifi_csi_config_t csi_config = {
         .enable                   = true,
         .acquire_csi_legacy       = false,
@@ -314,7 +283,7 @@ void app_main()
      * @brief Initialize ESP-NOW
      *        ESP-NOW protocol see: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/network/esp_now.html
      */
-#if CONFIG_IDF_TARGET_ESP32C5
+
     esp_now_peer_info_t peer = {
         .channel   = CONFIG_LESS_INTERFERENCE_CHANNEL,
         .ifidx     = WIFI_IF_STA,
@@ -323,6 +292,6 @@ void app_main()
     };
 
     wifi_esp_now_init(peer);
-#endif
+
     wifi_csi_init();
 }

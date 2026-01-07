@@ -28,6 +28,10 @@
 #define WIFI_CONNECTED_BIT    BIT0
 #define WIFI_DISCONNECTED_BIT BIT1
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#define ESP_IF_WIFI_STA ESP_MAC_WIFI_STA
+#endif
+
 static bool s_reconnect = true;
 static const char *TAG  = "wifi_cmd";
 

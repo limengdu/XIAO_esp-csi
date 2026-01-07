@@ -9,7 +9,7 @@ Before project configuration and build, be sure to set the correct chip target u
 
 ### Hardware Required
 
-* A development board with ESP32/ESP32-S2/ESP32-C3 SoC (e.g., ESP32-DevKitC, ESP-WROVER-KIT, etc.)
+* A development board with ESP32/ESP32-S2/ESP32-C3/ESP32-S3/ESP32-C5/ESP32-C6/ESP32-C61 SoC (e.g., ESP32-DevKitC, ESP-WROVER-KIT, etc.)
 * A USB cable for power supply and programming
 
 ### Configure the project
@@ -62,7 +62,7 @@ I (332) system_api: read default base MAC address from EFUSE
 I (335) wifi:wifi firmware version: 63017e0
 I (335) wifi:wifi certification version: v7.0
 I (335) wifi:config NVS flash: enabled
-I (335) wifi:config nano formating: disabled
+I (335) wifi:config nano formatting: disabled
 I (336) wifi:Init data frame dynamic rx buffer num: 128
 I (336) wifi:Init management frame dynamic rx buffer num: 128
 I (337) wifi:Init management short buffer num: 32
