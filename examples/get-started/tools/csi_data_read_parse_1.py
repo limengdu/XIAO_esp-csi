@@ -208,7 +208,7 @@ def generate_subcarrier_colors(red_range, green_range, yellow_range, total_num,i
 
 def csi_data_read_parse(port: str, csv_writer, log_file_fd,callback=None):
     global fft_gains, agc_gains
-    set = serial.Serial(port=port, baudrate=921600,bytesize=8, parity='N', stopbits=1)
+    set = serial.Serial(port=port, baudrate=2000000,bytesize=8, parity='N', stopbits=1)
     csi_count = 0  # CSI_DATA 计数器
     raw_count = 0  # RAW_DATA 计数器
     if set.isOpen():

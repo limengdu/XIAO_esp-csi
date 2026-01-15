@@ -29,7 +29,8 @@
 #define WIFI_DISCONNECTED_BIT BIT1
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-#define ESP_IF_WIFI_STA ESP_MAC_WIFI_STA
+#define ESP_IF_WIFI_STA WIFI_IF_STA
+#define ESP_IF_WIFI_AP  WIFI_IF_AP
 #endif
 
 static bool s_reconnect = true;

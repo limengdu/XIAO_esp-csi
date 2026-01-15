@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Presence Sensor</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Room Presence Sensor</h1>
+            <div class="connection-status" id="connStatus">Connecting...</div>
+        </header>
+
+        <main>
+            <!-- Main Status Display -->
+            <section class="status-panel">
+                <div class="status-icon" id="statusIcon">
+                    <div class="icon-ring"></div>
+                    <div class="icon-center"></div>
+                </div>
+                <div class="status-text" id="statusText">Initializing...</div>
+                <div class="status-detail" id="statusDetail">Waiting for sensor data</div>
+            </section>
+
+            <!-- Link Status Cards - ALL with sensitivity controls -->
+            <section class="links-section">
+                <h2>Sensor Links</h2>
+                <div class="links-grid">
+                    <!-- Link 0 (Master) -->
+                    <div class="link-card" id="link0">
+                        <div class="link-header">
+                            <span class="link-name">Link 1 (Master)</span>
+                            <span class="link-status" id="link0Status">--</span>
+                        </div>
+                        <div class="link-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Presence</span>
+                                <span class="metric-value" id="link0Wander">--</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Motion</span>
+                                <span class="metric-value" id="link0Jitter">--</span>
+                            </div>
+                        </div>
+                        <div class="link-bar">
+                            <div class="link-bar-fill" id="link0Bar"></div>
+                        </div>
+                        <div class="link-sensitivity">
+                            <div class="sens-header">
+                                <span class="sens-title">Sensitivity</span>
+                                <span class="sens-current">Now: <span id="link0WCurrent">--</span> / <span id="link0JCurrent">--</span></span>
+                            </div>
+                            <div class="sens-row">
+                                <span class="sens-label">Presence<br><small>↓ lower = harder to detect</small></span>
+                                <input type="range" id="link0WSens" min="0.01" max="2.0" step="0.01" value="0.15">
+                                <span class="sens-value" id="link0WVal">0.15</span>
+                            </div>
+                            <div class="sens-row">
+                                <span class="sens-label">Motion<br><small>↓ lower = harder to detect</small></span>
+                                <input type="range" id="link0JSens" min="0.01" max="2.0" step="0.01" value="0.20">
+                                <span class="sens-value" id="link0JVal">0.20</span>
+                            </div>
+                            <button class="btn-apply" onclick="applyLinkSensitivity(0)">Apply</button>
+                        </div>
+                    </div>
+
+                    <!-- Link 1 (Slave 1) -->
+                    <div class="link-card" id="link1">
+                        <div class="link-header">
+                            <span class="link-name">Link 2 (Slave 1)</span>
+                            <span class="link-status" id="link1Status">--</span>
+                        </div>
+                        <div class="link-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Presence</span>
+                                <span class="metric-value" id="link1Wander">--</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Motion</span>
+                                <span class="metric-value" id="link1Jitter">--</span>
+                            </div>
+                        </div>
+                        <div class="link-bar">
+                            <div class="link-bar-fill" id="link1Bar"></div>
+                        </div>
+                        <div class="link-sensitivity">
+                            <div class="sens-header">
+                                <span class="sens-title">Sensitivity</span>
+                                <span class="sens-current">Now: <span id="link1WCurrent">--</span> / <span id="link1JCurrent">--</span></span>
+                            </div>
+                            <div class="sens-row">
+                                <span class="sens-label">Presence<br><small>↓ lower = harder to detect</small></span>
+                                <input type="range" id="link1WSens" min="0.01" max="2.0" step="0.01" value="0.15">
+                                <span class="sens-value" id="link1WVal">0.15</span>
+                            </div>
+                            <div class="sens-row">
+                                <span class="sens-label">Motion<br><small>↓ lower = harder to detect</small></span>
+                                <input type="range" id="link1JSens" min="0.01" max="2.0" step="0.01" value="0.20">
+                                <span class="sens-value" id="link1JVal">0.20</span>
+                            </div>
+                            <button class="btn-apply" onclick="applyLinkSensitivity(1)">Apply</button>
+                        </div>
+                    </div>
+
+                    <!-- Link 2 (Slave 2) -->
+                    <div class="link-card" id="link2">
+                        <div class="link-header">
+                            <span class="link-name">Link 3 (Slave 2)</span>
+                            <span class="link-status" id="link2Status">--</span>
+                        </div>
+                        <div class="link-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Presence</span>
+                                <span class="metric-value" id="link2Wander">--</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Motion</span>
+                                <span class="metric-value" id="link2Jitter">--</span>
+                            </div>
+                        </div>
+                        <div class="link-bar">
+                            <div class="link-bar-fill" id="link2Bar"></div>
+                        </div>
+                        <div class="link-sensitivity">
+                            <div class="sens-header">
+                                <span class="sens-title">Sensitivity</span>
+                                <span class="sens-current">Now: <span id="link2WCurrent">--</span> / <span id="link2JCurrent">--</span></span>
+                            </div>
+                            <div class="sens-row">
+                                <span class="sens-label">Presence<br><small>↓ lower = harder to detect</small></span>
+                                <input type="range" id="link2WSens" min="0.01" max="2.0" step="0.01" value="0.15">
+                                <span class="sens-value" id="link2WVal">0.15</span>
+                            </div>
+                            <div class="sens-row">
+                                <span class="sens-label">Motion<br><small>↓ lower = harder to detect</small></span>
+                                <input type="range" id="link2JSens" min="0.01" max="2.0" step="0.01" value="0.20">
+                                <span class="sens-value" id="link2JVal">0.20</span>
+                            </div>
+                            <button class="btn-apply" onclick="applyLinkSensitivity(2)">Apply</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detection Logic Info -->
+            <section class="info-section">
+                <h2>Detection Logic</h2>
+                <div class="info-box">
+                    <p>🟢 <strong>Room Occupied:</strong> ≥2 links detect presence or motion</p>
+                    <p>🔵 <strong>Person Moving:</strong> ≥2 links detect motion</p>
+                    <p>⚪ <strong>Room Empty:</strong> &lt;2 links detecting</p>
+                    <p style="margin-top:10px;color:#888;"><em>Tip: After calibration, if a link shows wrong result, adjust its sensitivity until correct.</em></p>
+                </div>
+            </section>
+
+            <!-- Calibration Panel -->
+            <section class="calibration-section">
+                <h2>Calibration</h2>
+                <p class="calibration-info">
+                    <strong>Important:</strong> Keep room <strong>EMPTY</strong> during calibration. 
+                    All devices calibrate together (30 seconds).
+                </p>
+                <div class="calibration-controls">
+                    <button class="btn btn-primary" id="btnCalibrate" onclick="toggleCalibration()">
+                        Start Calibration (30s)
+                    </button>
+                    <div class="calibration-countdown" id="calibCountdown"></div>
+                </div>
+                <div class="threshold-display">
+                    <div class="threshold-item">
+                        <span class="threshold-label">Master Presence Threshold:</span>
+                        <span class="threshold-value" id="wanderThreshold">--</span>
+                    </div>
+                    <div class="threshold-item">
+                        <span class="threshold-label">Master Motion Threshold:</span>
+                        <span class="threshold-value" id="jitterThreshold">--</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>ESP32 CSI Room Presence Detection System</p>
+        </footer>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
